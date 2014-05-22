@@ -239,19 +239,20 @@ class ConnectionManager(object):
             if conn is not None:
                 return conn
 
-            # the pool is full
-            if len(self._pool) >= self.size:
-                raise MaxConnectionReachedError(self.uri)
-
-        # we need to create a new connector
-        conn = self._create_connector(bind, passwd)
-
         # adding it to the pool
+        # synchronizing the check for LDAP pool size and connection creation
         if self.use_pool:
             with self._pool_lock:
+                # the pool is full
+                if len(self._pool) >= self.size:
+                    raise MaxConnectionReachedError(self.uri)
+
+                # we need to create a new connector
+                conn = self._create_connector(bind, passwd)
                 self._pool.append(conn)
         else:
             # with no pool, the connector is always active
+            conn = self._create_connector(bind, passwd)
             conn.active = True
 
         return conn
